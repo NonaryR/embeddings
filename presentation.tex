@@ -1,0 +1,265 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Beamer Presentation
+% LaTeX Template
+% Version 1.0 (10/11/12)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+
+\documentclass{beamer}
+
+\mode<presentation> {
+
+% The Beamer class comes with a number of default slide themes
+% which change the colors and layouts of slides. Below this is a list
+% of all the themes, uncomment each in turn to see what they look like.
+
+%\usetheme{Antibes}
+%\usetheme{Bergen}
+%\usetheme{Berkeley}
+%\usetheme{Berlin}
+%\usetheme{Boadilla}
+%\usetheme{CambridgeUS}
+%\usetheme{Copenhagen}
+%\usetheme{Darmstadt}
+%\usetheme{Dresden}
+%\usetheme{Frankfurt}
+%\usetheme{Goettingen}
+%\usetheme{Hannover}
+%\usetheme{Ilmenau}
+%\usetheme{JuanLesPins}
+%\usetheme{Luebeck}
+\usetheme{Madrid}
+%\usetheme{Malmoe}
+%\usetheme{Marburg}
+%\usetheme{Montpellier}
+%\usetheme{PaloAlto}
+%\usetheme{Pittsburgh}
+%\usetheme{Rochester}
+%\usetheme{Singapore}
+%\usetheme{Szeged}
+%\usetheme{Warsaw}
+
+% As well as themes, the Beamer class has a number of color themes
+% for any slide theme. Uncomment each of these in turn to see how it
+% changes the colors of your current slide theme.
+
+%\usecolortheme{albatross}
+%\usecolortheme{beaver}
+%\usecolortheme{beetle}
+%\usecolortheme{crane}
+%\usecolortheme{dolphin}
+%\usecolortheme{dove}
+%\usecolortheme{fly}
+%\usecolortheme{lily}
+%\usecolortheme{orchid}
+%\usecolortheme{rose}
+%\usecolortheme{seagull}
+%\usecolortheme{seahorse}
+%\usecolortheme{whale}
+%\usecolortheme{wolverine}
+
+%\setbeamertemplate{footline} % To remove the footer line in all slides uncomment this line
+%\setbeamertemplate{footline}[page number] % To replace the footer line in all slides with a simple slide count uncomment this line
+
+%\setbeamertemplate{navigation symbols}{} % To remove the navigation symbols from the bottom of all slides uncomment this line
+}
+
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+
+\usepackage[utf8]{inputenc}
+\usepackage[english,russian]{babel}
+
+
+% ----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title{Создание кастомизированного эмбеддинга слов с помощью
+  нейронных сетей} % The short title appears at the bottom of every slide, the full title is only on the title page
+
+\author{Рустам Гилазтдинов\\
+\textit{hsec@ro.ru}} % Your name
+
+\date{\ 29 августа 2017 г. } % Date, can be changed to a custom date
+
+\begin{document}
+
+\begin{frame}
+\titlepage % Print the title page as the first slide
+\end{frame}
+
+\begin{frame}
+\frametitle{Обоснование подхода} % Table of contents slide, comment this block out to remove it
+\tableofcontents % Throughout your presentation, if you choose to use \section{} and \subsection{} commands, these will automatically be printed on this slide as an overview of your presentation
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+%	PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+%------------------------------------------------
+\section{Обработка исходных данных} 
+
+\begin{frame}
+\frametitle{Обработка исходных данных}
+Данные получены с ресурса Kaggle.
+Необходимо построить свой кастомизированный эмбеддинг слов. Тут
+сразу же возникает два варианта:
+\begin{itemize}
+\item {использовать готовую модель, такую как word2vec или GloVe, и дообучить ее
+  на своих данных. В дальнейшем выяснилось, что такой подход хуже
+  сказывается на метрике качества}
+\item {натренировать свои эмбедденги, что в конечном итоге дало лучшее значение
+    метрики, поэтому этот подход остался в финальном решении.}
+\end{itemize}
+  Будем решать задачу регрессии, так как оценки
+- непрерывные величины. В целом, распределение оценок равномерное, поэтому можно
+смело использовать mse, т.к. L2-loss должен сработать. Также существует подход
+- разбить таргет на бины, но мы обойдемся простым случаем. Есть интересная
+\href{https://arxiv.org/abs/1612.00775} {\textit {\color{red} статья}} на эту тему.
+В описании к данным указано, что некоторые эссе имеют оценки от двух разных
+групп рецензентов, в связи с этим я усреднил оценки по всем группам.
+\end{frame}
+
+%------------------------------------------------
+\section{Описание архитектуры}
+
+\begin{frame}
+  \frametitle{Описание архитектуры}
+Из специфики задачи было ясно, что нужно в первую очередь попробовать RNN, так
+как данные текстовые. В совокупности с LSTM-слоем это послужило
+baseline-решением. Следующей идеей стало следующее - да, у нас есть текстовые
+данные, и RNN очень хорошо работают с последовательностями, но природа данных
+такова, что, несомненно, длина эссе повлияла на конечную оценку, но помимо этого, существуют также внутренние
+характеристики эссе, такие как связность, информативность и целостность текста и т.п. Поэтому было решено
+использовать архитектуру, скомбинированную из RNN и CNN, что показывает себя как
+state-of-the-art на многих датасетах. Таким образом, представление текста перед LSTM-слоем
+является конкатенацией выходов нескольких сверток с разной шириной фильтра и ядра.
+Вдохновением послужила статья
+\href{https://arxiv.org/abs/1510.03820} {\textit{\color{red} ``A Sensitivity Analysis of Convolutional Neural Networks for Sentence Classification''}}.
+\end{frame}
+
+% ------------------------------------------------
+\begin{frame}
+  \frametitle{Описание архитектуры}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{model.png}
+    \caption{Архитектура сети}
+  %\label{fig:model_nn}
+\end{figure}
+\end{frame}
+
+% ------------------------------------------------
+
+\section{Выбор фреймворка}
+\begin{frame}
+  \frametitle{Выбор фреймворка}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{keras-tensorflow-logo.png}
+  \end{figure}
+Я использовал стандартный набор - keras и tensorflow
+\begin{itemize}
+\item functional api в керасе
+\item tensorboard у tensorflow
+\item относительно готов к продакшену в силу присутствия tf serving
+\end{itemize}
+Но еще есть PyTorch, который позволяет описывать граф вычислений не статично, а
+императивно, что удобно в отладке и экспериментировании. Пока сыроват, но стоит
+понаблюдать.
+\end{frame}
+
+%------------------------------------------------
+\section{Результаты обучения}
+\begin{frame}
+  \frametitle{Результаты обучения}
+  Так как решается задача линейной регрессии, я использую две самые простые и
+  репрезентивные метрики - это \textbf{r2-score} и \textbf{коэффициент объясненной дисперсии}.
+  Также, я дополнил их метрикой \textbf{quadratic weighted kappa}, которая использовалась
+  в исходной задаче на платформе kaggle.
+  \begin{table}
+    \begin{tabular}{l l l}
+      \toprule
+      \textbf{Метрика} & \textbf{Значение}\\
+      \midrule
+      r2-score & 0.942 \\
+      explained variance score & 0.944 \\
+      kappa & 0.9688 \\
+      \bottomrule
+    \end{tabular}
+    \caption{Результаты обучения}
+  \end{table}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}
+  \frametitle{Результаты обучения}
+\begin{block}{Пример 1}
+  Some experts are concerned that people are spending to much time on computers,
+  and I believe that they are correct. Most kinds would perfer to be on the
+  computer chatting with friends on line or spending hours on facebook but what
+  is the point of this when there is a whole to explore,  ... 
+\end{block}
+\textbf{Оценка преподователя} 11 & \textbf{Оценка моделью} 10.61144638
+\begin{block}{Пример 2}
+  Almost everyone is effected by computers in some sort of way. Some people think
+  computers are bad because some people spend too much time on their computers.
+  The thing is computers help us with our everyday life. If we want to...
+\end{block}
+\textbf{Оценка преподователя}  7 & \textbf{Оценка моделью} 7.3123
+\end{frame}
+
+%------------------------------------------------
+\section{Параметры и их влияние}
+\begin{frame}
+  \frametitle{Параметры и их влияние}
+Здесь хотелось бы отметить следующие моменты
+\begin{itemize}
+\item функция оптимизации - rmsprop лучше всего подходит для RNN
+\item функция потерь - регрессия, поэтому стандартный mse
+\item функция активации - использовал relu, лучший вариант
+\item дропаут - важнейший параметр для регуляризации, но у нас данных не так
+  много, поэтому небольшой. В изображениях, например, жалеть не нужно
+\item размер батча - меньший батч не дает прироста метрик, а сеть учиться
+  медленнее
+\item размер фильтра и ядра в свертках - в целом, при добавлении сверточных
+  слоев точность выросла, и добавление разных значений дало ощутимый прирост
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{Use cases}
+\begin{frame}
+  \frametitle{Use cases}
+\begin{itemize}
+\item кастомизированный эмбеддинг - отличное подспорье в domain-specific задачах
+  обработки естественного языка 
+\item эмбеддингами мы можем описать не только слова, а например, посещения
+  пользователем набора сайтов, и создавать сегменты
+\item эмбеддинги используются в биоинформатике - для векторизации геномов
+\item используются в анализе музыки - классические произведения представлены нотами
+\item используются в генерации последовательностей, причем, допустим, есть
+  вектор с изображениями и их описанием, так вот, по интуиции,
+  эмбеддинги будут способны помогать в классификации изображений, которых не
+  было в обучающей выборке
+\item в целом, эмбеддинги - универсальный 'репрезентатор' данных, то есть данные
+  разной природы могут использовать одни и те же эмбеддинги
+\end{itemize}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
